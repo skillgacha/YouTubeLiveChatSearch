@@ -29,10 +29,10 @@ def to_links(df):
 
 #ソースデータ読み込み
 @st.cache
-def load_data():
+def load_data(channel_Id):
     #df = pd.read_csv(f'{os.path.dirname(__file__)}/hiroyuki_yt-livechat_data.csv', low_memory=False)
     data_list = []
-    files = glob.glob(f"{os.path.dirname(__file__)}/livechat_data/hiroyuki/*.csv")
+    files = glob.glob(f"{os.path.dirname(__file__)}/livechat_data/{channel_Id}/*.csv")
     for file in files:
         data_list.append(pd.read_csv(file))
         #print(file)
@@ -40,30 +40,44 @@ def load_data():
 
     return df
 
+@st.cache
+def load_date():
+    today = datetime.today()
+    return today
+
 #タイトルテキストの描画
-st.title('ひろゆきYoutube生配信のライブチャットデータ')
-df = load_data()
-today = datetime.today()
+st.title('Youtube生配信のライブチャットデータ')
+
+selected_items = st.sidebar.selectbox('チャンネル選択', ['ひろゆき', '武井壮', 'DaiGo'])
+channel_Id = 'UC0yQ2h4gQXmVUFWZSqlMVOA'
+if selected_items == 'ひろゆき':
+    channel_Id = 'UC0yQ2h4gQXmVUFWZSqlMVOA'#ひろゆき
+if selected_items == 'DaiGo':
+    channel_Id = 'UCFdBehO71GQaIom4WfVeGSw'#DaiGo
+if selected_items == '武井壮':
+    channel_Id = 'UCJINANTSM0FbvzuJpFyJfjg'#武井壮
+
+df = load_data(channel_Id)
 
 #期間選択用のスライダー
-time_range = st.slider('日時の絞り込み',
-                         min_value=datetime(2016, 1, 31),
-                         max_value=datetime(2021, 7, 9),
-                         value=(datetime(2020, 1, 31), datetime(2021, 7, 9)),
+time_range = st.sidebar.slider('日時の絞り込み',
+                         min_value=datetime(2018, 3, 1),
+                         max_value=load_date(),
+                         value=(datetime(2020, 1, 31), load_date()),
                          format='YYYY-MM-DD',
                          )
-st.write('検索範囲: ', str(time_range[0].date()), str(time_range[1].date()))
+st.sidebar.write('検索範囲: ', str(time_range[0].date()), str(time_range[1].date()))
 start_time = int(time_range[0].timestamp())
 end_time = int(time_range[1].timestamp())
 
 #コメント検索フォーム
-search_text = st.text_input(label='コメント検索', value='こんにちは')
+search_text = st.sidebar.text_input(label='コメント検索', value='こんにちは')
 
 #ユーザー名検索フォーム
-search_user = st.text_input(label='ユーザー検索', value='ひろゆき')
+search_user = st.sidebar.text_input(label='ユーザー検索', value='')
 
 #チャットの種類選択フォーム
-selected_item = st.radio('チャットタイプ', ['指定しない', 'ノーマルチャットのみ', 'スーパーチャットのみ'])
+selected_item = st.sidebar.radio('チャットタイプ', ['指定しない', 'ノーマルチャットのみ', 'スーパーチャットのみ'])
 
 #期間絞り込み
 df_result = df.query(f'{str(start_time*1000000)} <= timestampUsec < {str(end_time*1000000)}')
@@ -80,23 +94,28 @@ elif selected_item == 'スーパーチャットのみ':
     chat_type = 'SUPERCHAT'
     df_result = df_result[df_result['type'] == chat_type]
 
-#該当データがあればタイムスタンプ列を見やすく変換
-if len(df_result) > 0:
-    df_result["timestampUsec"] = df_result["timestampUsec"].apply(ts_to_dt)
-    #video_idをハイパーリンクに
-    df_result["video_id"] = df_result.apply(to_links, axis=1)
+if len(df_result) > 2500:
+    st.write('<span style="color:red;background:pink">条件を満たす対象が多すぎます。検索内容を絞り込んでください</span>',
+              unsafe_allow_html=True)
 
-#件数表示
-if len(df_result) > 0:
-    st.write(f'{len(df_result)}件のコメントが該当しました')
 else:
-    st.write('条件に一致するコメントはありませんでした')
+    #該当データがあればタイムスタンプ列を見やすく変換
+    if len(df_result) > 0:
+        df_result["timestampUsec"] = df_result["timestampUsec"].apply(ts_to_dt)
+        #video_idをハイパーリンクに
+        df_result["video_id"] = df_result.apply(to_links, axis=1)
 
-#表の描画
-#st.dataframe(df_result)
+    #件数表示
+    if len(df_result) > 0:
+        st.write(f'{len(df_result)}件のコメントが該当しました')
+    else:
+        st.write('条件に一致するコメントはありませんでした')
 
-#データフレーム表示だとハイパーリンクが機能しないのでテーブルで表示
-df_width = '50px'
-df_result = df_result.to_html(escape=False, col_space=['150px', df_width, df_width, df_width, '400px', df_width, df_width, df_width, df_width])
+    #表の描画
+    #st.dataframe(df_result)
 
-st.write(df_result, unsafe_allow_html=True)
+    #データフレーム表示だとハイパーリンクが機能しないのでテーブルで表示
+    df_width = '50px'
+    df_result = df_result.to_html(escape=False, col_space=['150px', df_width, df_width, df_width, '400px', df_width, df_width, df_width, df_width])
+
+    st.write(df_result, unsafe_allow_html=True)
