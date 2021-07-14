@@ -29,10 +29,10 @@ def to_links(df):
 
 #ソースデータ読み込み
 @st.cache
-def load_data():
+def load_data(channel_Id):
     #df = pd.read_csv(f'{os.path.dirname(__file__)}/hiroyuki_yt-livechat_data.csv', low_memory=False)
     data_list = []
-    files = glob.glob(f"{os.path.dirname(__file__)}/livechat_data/UC0yQ2h4gQXmVUFWZSqlMVOA/*.csv")
+    files = glob.glob(f"{os.path.dirname(__file__)}/livechat_data/{channel_Id}/*.csv")
     for file in files:
         data_list.append(pd.read_csv(file))
         #print(file)
@@ -46,9 +46,18 @@ def load_date():
     return today
 
 #タイトルテキストの描画
-st.title('ひろゆきYoutube生配信のライブチャットデータ')
-df = load_data()
-today = datetime.today()
+st.title('Youtube生配信のライブチャットデータ')
+
+selected_items = st.selectbox('チャンネル選択', ['ひろゆき', '武井壮', 'DaiGo'])
+channel_Id = 'UC0yQ2h4gQXmVUFWZSqlMVOA'
+if selected_items == 'ひろゆき':
+    channel_Id = 'UC0yQ2h4gQXmVUFWZSqlMVOA'#ひろゆき
+if selected_items == 'DaiGo':
+    channel_Id = 'UCFdBehO71GQaIom4WfVeGSw'#DaiGo
+if selected_items == '武井壮':
+    channel_Id = 'UCJINANTSM0FbvzuJpFyJfjg'#武井壮
+
+df = load_data(channel_Id)
 
 #期間選択用のスライダー
 time_range = st.slider('日時の絞り込み',
@@ -65,7 +74,7 @@ end_time = int(time_range[1].timestamp())
 search_text = st.text_input(label='コメント検索', value='こんにちは')
 
 #ユーザー名検索フォーム
-search_user = st.text_input(label='ユーザー検索', value='ひろゆき')
+search_user = st.text_input(label='ユーザー検索', value='')
 
 #チャットの種類選択フォーム
 selected_item = st.radio('チャットタイプ', ['指定しない', 'ノーマルチャットのみ', 'スーパーチャットのみ'])
