@@ -24,7 +24,7 @@ def to_links(df):
 
     video_url = f'https://www.youtube.com/watch?v={df["video_id"]}&t={str(seconds)}s'
 
-    return f'<a target="_blank" href="{video_url}">{df["video_id"]}</a>'
+    return f'<a target="_blank" href="{video_url}">{df["video_title"]}</a>'
     #return video_url
 
 #ソースデータ読み込み
@@ -34,9 +34,10 @@ def load_data(channel_Id):
     data_list = []
     files = glob.glob(f"{os.path.dirname(__file__)}/livechat_data/{channel_Id}/*.csv")
     for file in files:
-        data_list.append(pd.read_csv(file))
+        data_list.append(pd.read_csv(file, low_memory=False))
         #print(file)
     df = pd.concat(data_list, axis=0)
+    df = df.fillna({'authorbadge': '', 'purchaseAmount': ''}).sort_values('timestampUsec')
 
     return df
 
@@ -103,7 +104,7 @@ else:
     if len(df_result) > 0:
         df_result["timestampUsec"] = df_result["timestampUsec"].apply(ts_to_dt)
         #video_idをハイパーリンクに
-        df_result["video_id"] = df_result.apply(to_links, axis=1)
+        df_result["video_title"] = df_result.apply(to_links, axis=1)
 
     #件数表示
     if len(df_result) > 0:
@@ -113,9 +114,11 @@ else:
 
     #表の描画
     #st.dataframe(df_result)
+    df_result.set_axis(['チャットコメント','user','authorbadge','タイトル','time','type','スパチャ金額','投稿日時','video_id','Chat_No'], axis=1, inplace=True)
 
     #データフレーム表示だとハイパーリンクが機能しないのでテーブルで表示
     df_width = '50px'
-    df_result = df_result.to_html(escape=False, col_space=['150px', df_width, df_width, df_width, '400px', df_width, df_width, df_width, df_width])
+    #df_result = df_result.to_html(escape=False, col_space=['400px', '150px', df_width, '300px', df_width, df_width, df_width, df_width, df_width, df_width], index=False)
+    df_result = df_result[['チャットコメント','user','タイトル','time','スパチャ金額','投稿日時','authorbadge','video_id']].to_html(escape=False, col_space=['400px', '150px','300px', df_width, df_width, '200px', df_width, df_width], index=False)
 
     st.write(df_result, unsafe_allow_html=True)
