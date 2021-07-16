@@ -3,6 +3,7 @@ from datetime import datetime
 import glob
 import os
 import pandas as pd
+import re
 import streamlit as st
 #import matplotlib.pyplot as plt
 
@@ -26,6 +27,15 @@ def to_links(df):
 
     return f'<a target="_blank" href="{video_url}">{df["video_title"]}</a>'
     #return video_url
+
+def add_highlight(text, search):
+    highlight = text.replace(search, f'<mark>{search}</mark>')
+    return highlight
+
+def sel_price(price_str, price_range):
+    price = int(re.sub(r"\D", "", price_str))
+    range = re.findall(r"[-+]?\d*\.\d+|\d+", price_range.replace(',', ''))
+    return int(range[0]) <= price <= int(range[1])
 
 #ソースデータ読み込み
 @st.cache
@@ -85,6 +95,16 @@ if selected_item == 'ノーマルチャットのみ':
 elif selected_item == 'スーパーチャットのみ':
     chat_type = 'SUPERCHAT'
     df_result = df_result[df_result['type'] == chat_type]
+    superchat_sel = ['全て', '100 - 199円', '200 - 499円', '500 - 999円', '1,000 - 1,999円', '2,000 - 4,999円', '5,000 - 9,999円', '10,000 - 50,000円', '外貨']
+    superchat = st.radio('金額', superchat_sel)
+    st.write(superchat)
+    if superchat == '外貨':
+        df_result = df_result[~df_result['purchaseAmount'].str.contains('￥', na=False)]
+    elif superchat != '全て':
+        df_result = df_result[df_result['purchaseAmount'].str.contains('￥', na=False)]
+        df_result = df_result[df_result['purchaseAmount'].apply(sel_price, price_range=superchat)]
+    else:
+        df_result = df_result[df_result['type'] == chat_type]
 
 if len(df_result) > 2500:
     st.write('<span style="color:red;background:pink">条件を満たす対象が多すぎます。検索内容を絞り込んでください</span>',
@@ -96,6 +116,11 @@ else:
         df_result["timestampUsec"] = df_result["timestampUsec"].apply(ts_to_dt)
         #video_idをハイパーリンクに
         df_result["video_title"] = df_result.apply(to_links, axis=1)
+
+        if len(search_text) > 0:
+            df_result['text'] = df_result['text'].apply(add_highlight, search=search_text)
+        if len(search_user) > 0:
+            df_result['user'] = df_result['user'].apply(add_highlight, search=search_user)
 
     #件数表示
     if len(df_result) > 0:
